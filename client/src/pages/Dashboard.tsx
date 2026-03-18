@@ -54,11 +54,9 @@ export default function Dashboard() {
   const [data, setData] = useState<DashboardData[]>([]);
   const [filteredData, setFilteredData] = useState<DashboardData[]>([]);
   const [selectedCell, setSelectedCell] = useState<string>("Todas");
-  const [selectedGeração, setSelectedGeração] = useState<string>("Todas");
   const [selectedMonth, setSelectedMonth] = useState<string>("Todos");
   const [selectedYear, setSelectedYear] = useState<string>("Todos");
   const [cells, setCells] = useState<string[]>([]);
-  const [gerações, setGerações] = useState<string[]>([]);
   const [months, setMonths] = useState<{ value: string; label: string }[]>([]);
   const [years, setYears] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,10 +75,8 @@ export default function Dashboard() {
         setData(merged);
         const all = merged;
         const cellSet = new Set(all.map((d) => d.Célula));
-        const geraçãoSet = new Set(all.map((d) => d.Geração));
         const yearSet = new Set(all.map((d) => d.Data.split("-")[0]));
         setCells(["Todas", ...Array.from(cellSet)]);
-        setGerações(["Todas", ...Array.from(geraçãoSet)]);
         setYears(["Todos", ...Array.from(yearSet).sort((a, b) => b.localeCompare(a))]);
         setMonths([{ value: "Todos", label: "Todos os meses" }, ...MONTHS]);
         setLoading(false);
@@ -96,9 +92,6 @@ export default function Dashboard() {
     if (selectedCell !== "Todas") {
       filtered = filtered.filter((d) => d.Célula === selectedCell);
     }
-    if (selectedGeração !== "Todas") {
-      filtered = filtered.filter((d) => d.Geração === selectedGeração);
-    }
     if (selectedYear !== "Todos") {
       filtered = filtered.filter((d) => d.Data.startsWith(selectedYear));
     }
@@ -107,7 +100,7 @@ export default function Dashboard() {
       filtered = filtered.filter((d) => d.Data.split("-")[1] === targetMonth);
     }
     setFilteredData(filtered);
-  }, [selectedCell, selectedGeração, selectedMonth, selectedYear, data]);
+  }, [selectedCell, selectedMonth, selectedYear, data]);
 
   // Calcular KPIs
   const totalVisitantes = filteredData.reduce((sum, d) => sum + d.Visitantes, 0);
@@ -330,7 +323,7 @@ export default function Dashboard() {
         {/* Filtros */}
         <div className="mb-8 bg-white rounded-xl p-6 shadow-md border border-gray-200">
           <h3 className="text-lg font-bold text-gray-900 mb-4">Filtros</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Célula
@@ -343,24 +336,6 @@ export default function Dashboard() {
                   {cells.map((cell) => (
                     <SelectItem key={cell} value={cell}>
                       {cell}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Geração
-              </label>
-              <Select value={selectedGeração} onValueChange={setSelectedGeração}>
-                <SelectTrigger className="w-full border-gray-300">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {gerações.map((ger) => (
-                    <SelectItem key={ger} value={ger}>
-                      {ger}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -408,7 +383,6 @@ export default function Dashboard() {
                 variant="outline"
                 onClick={() => {
                   setSelectedCell("Todas");
-                  setSelectedGeração("Todas");
                   setSelectedMonth("Todos");
                   setSelectedYear("Todos");
                 }}
