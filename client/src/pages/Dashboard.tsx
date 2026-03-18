@@ -184,7 +184,14 @@ export default function Dashboard() {
     [cellDataRaw, sortBy]
   );
 
+  // Lista de todas as gerações presentes no dataset completo (para gráfico sempre completo)
+  const allGenerations = useMemo(() => {
+    const set = new Set(data.map((d) => d.Geração).filter((g) => g && String(g).trim()));
+    return Array.from(set).sort();
+  }, [data]);
+
   // Dados por geração - max por célula (evita inflar) + soma conversões
+  // Inclui TODAS as gerações do dataset (com 0 quando não há dados no filtro)
   const geraçãoData = useMemo(() => {
     const byGenCell = new Map<
       string,
@@ -207,11 +214,14 @@ export default function Dashboard() {
       cur.Conversão += val.conv;
       byGen.set(gen, cur);
     });
-    return Array.from(byGen.entries()).map(([Geração, v]) => ({
+    // Garante que TODAS as gerações apareçam no gráfico (preenche com 0 quando ausente)
+    return allGenerations.map((Geração) => ({
       Geração,
-      ...v,
+      Membros: byGen.get(Geração)?.Membros ?? 0,
+      Visitantes: byGen.get(Geração)?.Visitantes ?? 0,
+      Conversão: byGen.get(Geração)?.Conversão ?? 0,
     }));
-  }, [filteredData]);
+  }, [filteredData, allGenerations]);
 
   // Ranking por célula (usa mesma ordenação selecionada)
   const rankingData = useMemo(
@@ -689,12 +699,15 @@ export default function Dashboard() {
               Performance por Geração
             </h2>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={geraçãoData}>
+              <BarChart data={geraçãoData} margin={{ bottom: 80 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
                   dataKey="Geração"
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 11 }}
                   stroke="#6b7280"
+                  interval={0}
+                  angle={-35}
+                  textAnchor="end"
                 />
                 <YAxis tick={{ fontSize: 12 }} stroke="#6b7280" />
                 <Tooltip
