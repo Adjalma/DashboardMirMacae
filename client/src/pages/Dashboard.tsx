@@ -184,26 +184,34 @@ export default function Dashboard() {
     [cellDataRaw, sortBy]
   );
 
-  // Dados por geração - memoizado
-  const geraçãoData = useMemo(() => filteredData.reduce(
-    (acc, d) => {
-      const existing = acc.find((item) => item.Geração === d.Geração);
-      if (existing) {
-        existing.Visitantes += d.Visitantes;
-        existing.Membros += d.Membros;
-        existing.Conversão += d.Conversão;
-      } else {
-        acc.push({
-          Geração: d.Geração,
-          Visitantes: d.Visitantes,
-          Membros: d.Membros,
-          Conversão: d.Conversão,
-        });
-      }
-      return acc;
-    },
-    [] as Array<{ Geração: string; Visitantes: number; Membros: number; Conversão: number }>
-  ), [filteredData]);
+  // Dados por geração - max por célula (evita inflar) + soma conversões
+  const geraçãoData = useMemo(() => {
+    const byGenCell = new Map<
+      string,
+      { maxM: number; maxV: number; conv: number }
+    >();
+    for (const d of filteredData) {
+      const key = `${d.Geração}|${d.Célula}`;
+      const cur = byGenCell.get(key) ?? { maxM: 0, maxV: 0, conv: 0 };
+      cur.maxM = Math.max(cur.maxM, d.Membros);
+      cur.maxV = Math.max(cur.maxV, d.Visitantes);
+      cur.conv += d.Conversão;
+      byGenCell.set(key, cur);
+    }
+    const byGen = new Map<string, { Visitantes: number; Membros: number; Conversão: number }>();
+    byGenCell.forEach((val, key) => {
+      const gen = key.split("|")[0];
+      const cur = byGen.get(gen) ?? { Visitantes: 0, Membros: 0, Conversão: 0 };
+      cur.Membros += val.maxM;
+      cur.Visitantes += val.maxV;
+      cur.Conversão += val.conv;
+      byGen.set(gen, cur);
+    });
+    return Array.from(byGen.entries()).map(([Geração, v]) => ({
+      Geração,
+      ...v,
+    }));
+  }, [filteredData]);
 
   // Ranking por célula (usa mesma ordenação selecionada)
   const rankingData = useMemo(
