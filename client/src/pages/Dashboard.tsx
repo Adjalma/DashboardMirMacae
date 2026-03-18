@@ -144,11 +144,8 @@ export default function Dashboard() {
     return { totalMembros: m, totalVisitantes: v, totalPresentes: p };
   }, [filteredData]);
 
-  // Total de células no dataset completo (base + importados), independente dos filtros
-  const totalCélulas = useMemo(
-    () => new Set(data.map((d) => d.Célula).filter(Boolean)).size,
-    [data]
-  );
+  // Total de células da organização (fixo; dados podem ter subset)
+  const totalCélulas = 41;
 
   const totalConversoes = filteredData.reduce((sum, d) => sum + d.Conversão, 0);
   const mediaConversao =
