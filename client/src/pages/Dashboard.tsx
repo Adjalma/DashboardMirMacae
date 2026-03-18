@@ -26,14 +26,14 @@ import StatCard from "@/components/StatCard";
 
 const STORAGE_KEY = "celulas_dashboard_imported_data";
 
-/** Extrai a geração do nome da célula. Agrupa: Filhos/Filhas de Sião → Sião; Geração de Benjamim → Benjamim. Monte Sião permanece separado. */
+/** Extrai a geração do nome da célula. Agrupa: Filhos/Filhas de Sião → Filhos de Sião; Geração de Benjamim → Benjamim. Monte Sião permanece separado. */
 function getGeracaoFromCelula(celula: string): string {
   if (!celula?.trim()) return "";
   let base = celula.trim();
   const match = celula.match(/^(.+?)\s*\([MH]\)\s+-/);
   if (match) base = match[1].trim();
   else if (celula.includes(" Adolescentes")) base = celula.replace(" Adolescentes", "").trim();
-  if (/^Filh[oa]s de Sião$/i.test(base)) return "Sião";
+  if (/^Filh[oa]s de Sião$/i.test(base)) return "Filhos de Sião";
   if (/^Monte Sião$/i.test(base)) return "Monte Sião";
   if (/Benjamim/i.test(base)) return "Benjamim";
   return base;
