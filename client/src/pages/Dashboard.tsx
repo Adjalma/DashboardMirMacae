@@ -33,8 +33,9 @@ function getGeracaoFromCelula(celula: string): string {
   const match = celula.match(/^(.+?)\s*\([MH]\)\s+-/);
   if (match) base = match[1].trim();
   else if (celula.includes(" Adolescentes")) base = celula.replace(" Adolescentes", "").trim();
-  if (/^Filh[oa]s de Sião$/i.test(base)) return "Filhos de Sião";
-  if (/^Monte Sião$/i.test(base)) return "Monte Sião";
+  const b = base.toLowerCase();
+  if ((b.includes("filhos de si") || b.includes("filhas de si")) && !b.includes("monte si")) return "Filhos de Sião";
+  if (b.includes("monte si")) return "Monte Sião";
   if (/Benjamim/i.test(base)) return "Benjamim";
   return base;
 }
