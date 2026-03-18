@@ -20,11 +20,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, TrendingUp, Zap, Target, BarChart3, Upload, FileDown } from "lucide-react";
+import { Users, TrendingUp, Zap, Target, BarChart3, Upload, FileDown, LayoutGrid } from "lucide-react";
 import DashboardHeader from "@/components/DashboardHeader";
 import StatCard from "@/components/StatCard";
 
 const STORAGE_KEY = "celulas_dashboard_imported_data";
+
+/** Extrai a geração do nome da célula. Agrupa: Filhos/Filhas de Sião → Sião; Geração de Benjamim → Benjamim. Monte Sião permanece separado. */
+function getGeracaoFromCelula(celula: string): string {
+  if (!celula?.trim()) return "";
+  let base = celula.trim();
+  const match = celula.match(/^(.+?)\s*\([MH]\)\s+-/);
+  if (match) base = match[1].trim();
+  else if (celula.includes(" Adolescentes")) base = celula.replace(" Adolescentes", "").trim();
+  if (/^Filh[oa]s de Sião$/i.test(base)) return "Sião";
+  if (/^Monte Sião$/i.test(base)) return "Monte Sião";
+  if (/Benjamim/i.test(base)) return "Benjamim";
+  return base;
+}
 
 function exportViaPrint() {
   window.print();
@@ -184,21 +197,25 @@ export default function Dashboard() {
     [cellDataRaw, sortBy]
   );
 
-  // Lista de todas as gerações presentes no dataset completo (para gráfico sempre completo)
+  // Lista de todas as gerações (derivadas do nome da célula) no dataset completo
   const allGenerations = useMemo(() => {
-    const set = new Set(data.map((d) => d.Geração).filter((g) => g && String(g).trim()));
+    const set = new Set(
+      data.map((d) => getGeracaoFromCelula(d.Célula)).filter((g) => g)
+    );
     return Array.from(set).sort();
   }, [data]);
 
-  // Dados por geração - max por célula (evita inflar) + soma conversões
-  // Inclui TODAS as gerações do dataset (com 0 quando não há dados no filtro)
+  // Dados por geração - derivado do nome da célula (Filhos/Filhas de Sião → Sião; Benjamim → Benjamim)
+  // Max por célula (evita inflar) + soma conversões. Inclui TODAS as gerações (com 0 quando ausente)
   const geraçãoData = useMemo(() => {
     const byGenCell = new Map<
       string,
       { maxM: number; maxV: number; conv: number }
     >();
     for (const d of filteredData) {
-      const key = `${d.Geração}|${d.Célula}`;
+      const gen = getGeracaoFromCelula(d.Célula);
+      if (!gen) continue;
+      const key = `${gen}|${d.Célula}`;
       const cur = byGenCell.get(key) ?? { maxM: 0, maxV: 0, conv: 0 };
       cur.maxM = Math.max(cur.maxM, d.Membros);
       cur.maxV = Math.max(cur.maxV, d.Visitantes);
@@ -214,7 +231,6 @@ export default function Dashboard() {
       cur.Conversão += val.conv;
       byGen.set(gen, cur);
     });
-    // Garante que TODAS as gerações apareçam no gráfico (preenche com 0 quando ausente)
     return allGenerations.map((Geração) => ({
       Geração,
       Membros: byGen.get(Geração)?.Membros ?? 0,
@@ -488,7 +504,7 @@ export default function Dashboard() {
         </div>
 
         {/* KPIs - Membros/Visitantes/Presentes: máx. por célula (aprox. sem dados nominais) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
           <StatCard
             title="Visitantes (aprox.)"
             value={totalVisitantes}
@@ -527,6 +543,14 @@ export default function Dashboard() {
             icon={<Target className="w-6 h-6 text-[#ec4899]" />}
             borderColor="border-l-[#ec4899]"
             bgColor="bg-[#fce7f3]"
+          />
+
+          <StatCard
+            title="Total de Células"
+            value={cellData.length}
+            icon={<LayoutGrid className="w-6 h-6 text-[#7c2d12]" />}
+            borderColor="border-l-[#7c2d12]"
+            bgColor="bg-[#fff7ed]"
           />
         </div>
 
