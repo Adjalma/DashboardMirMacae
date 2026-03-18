@@ -102,15 +102,40 @@ export default function Dashboard() {
     setFilteredData(filtered);
   }, [selectedCell, selectedMonth, selectedYear, data]);
 
-  // Calcular KPIs
-  const totalVisitantes = filteredData.reduce((sum, d) => sum + d.Visitantes, 0);
-  const totalMembros = filteredData.reduce((sum, d) => sum + d.Membros, 0);
+  // KPIs: Membros e Presentes usam MÁXIMO por célula (evita contar a mesma pessoa N vezes em N reuniões)
+  // Sem presença nominal, o máximo reportado em uma reunião por célula aproxima o tamanho real do grupo
+  const { totalMembros, totalVisitantes, totalPresentes } = useMemo(() => {
+    const byCell = new Map<
+      string,
+      { maxMembros: number; maxVisitantes: number; maxPresentes: number }
+    >();
+    for (const d of filteredData) {
+      const cur = byCell.get(d.Célula) ?? {
+        maxMembros: 0,
+        maxVisitantes: 0,
+        maxPresentes: 0,
+      };
+      cur.maxMembros = Math.max(cur.maxMembros, d.Membros);
+      cur.maxVisitantes = Math.max(cur.maxVisitantes, d.Visitantes);
+      cur.maxPresentes = Math.max(cur.maxPresentes, d.Membros + d.Visitantes);
+      byCell.set(d.Célula, cur);
+    }
+    let m = 0,
+      v = 0,
+      p = 0;
+    byCell.forEach((val) => {
+      m += val.maxMembros;
+      v += val.maxVisitantes;
+      p += val.maxPresentes;
+    });
+    return { totalMembros: m, totalVisitantes: v, totalPresentes: p };
+  }, [filteredData]);
+
   const totalConversoes = filteredData.reduce((sum, d) => sum + d.Conversão, 0);
   const mediaConversao =
     filteredData.length > 0
       ? (filteredData.reduce((sum, d) => sum + d.Taxa_Conversao, 0) / filteredData.length).toFixed(1)
       : 0;
-  const totalPresentes = totalMembros + totalVisitantes;
 
   // Dados por data (série temporal) - memoizado
   const timeSeriesData = useMemo(() => filteredData.reduce(
@@ -134,25 +159,22 @@ export default function Dashboard() {
   ).sort((a, b) => new Date(a.Data).getTime() - new Date(b.Data).getTime()), [filteredData]);
 
   type CellRow = { Célula: string; Visitantes: number; Membros: number; Conversão: number };
-  const cellDataRaw = useMemo(() => filteredData.reduce(
-    (acc, d) => {
-      const existing = acc.find((item) => item.Célula === d.Célula);
-      if (existing) {
-        existing.Visitantes += d.Visitantes;
-        existing.Membros += d.Membros;
-        existing.Conversão += d.Conversão;
-      } else {
-        acc.push({
-          Célula: d.Célula,
-          Visitantes: d.Visitantes,
-          Membros: d.Membros,
-          Conversão: d.Conversão,
-        });
-      }
-      return acc;
-    },
-    [] as CellRow[]
-  ), [filteredData]);
+  const cellDataRaw = useMemo(() => {
+    const byCell = new Map<string, { v: number; m: number; c: number }>();
+    for (const d of filteredData) {
+      const cur = byCell.get(d.Célula) ?? { v: 0, m: 0, c: 0 };
+      cur.v = Math.max(cur.v, d.Visitantes);
+      cur.m = Math.max(cur.m, d.Membros);
+      cur.c += d.Conversão;
+      byCell.set(d.Célula, cur);
+    }
+    return Array.from(byCell.entries()).map(([Célula, { v, m, c }]) => ({
+      Célula,
+      Visitantes: v,
+      Membros: m,
+      Conversão: c,
+    }));
+  }, [filteredData]);
 
   const getSortValue = (row: CellRow) =>
     sortBy === "Total" ? row.Membros + row.Visitantes : row[sortBy];
@@ -447,10 +469,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* KPIs */}
+        {/* KPIs - Membros/Visitantes/Presentes: máx. por célula (aprox. sem dados nominais) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <StatCard
-            title="Total Visitantes"
+            title="Visitantes (aprox.)"
             value={totalVisitantes}
             icon={<Users className="w-6 h-6 text-[#d97706]" />}
             borderColor="border-l-[#d97706]"
@@ -458,7 +480,7 @@ export default function Dashboard() {
           />
 
           <StatCard
-            title="Total Membros"
+            title="Membros (aprox.)"
             value={totalMembros}
             icon={<Zap className="w-6 h-6 text-[#dc2626]" />}
             borderColor="border-l-[#dc2626]"
@@ -466,7 +488,7 @@ export default function Dashboard() {
           />
 
           <StatCard
-            title="Total Presentes"
+            title="Presentes (aprox.)"
             value={totalPresentes}
             icon={<BarChart3 className="w-6 h-6 text-[#1e40af]" />}
             borderColor="border-l-[#1e40af]"
