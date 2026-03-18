@@ -144,6 +144,12 @@ export default function Dashboard() {
     return { totalMembros: m, totalVisitantes: v, totalPresentes: p };
   }, [filteredData]);
 
+  // Total de células no dataset completo (base + importados), independente dos filtros
+  const totalCélulas = useMemo(
+    () => new Set(data.map((d) => d.Célula).filter(Boolean)).size,
+    [data]
+  );
+
   const totalConversoes = filteredData.reduce((sum, d) => sum + d.Conversão, 0);
   const mediaConversao =
     filteredData.length > 0
@@ -292,8 +298,12 @@ export default function Dashboard() {
         if (isExcel) {
           const XLSX = await import("xlsx");
           const wb = XLSX.read(reader.result, { type: "array" });
-          const firstSheet = wb.Sheets[wb.SheetNames[0]];
-          const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet);
+          // Prioriza aba "Células" ou "Celulas"; senão usa a primeira
+          const sheetName =
+            wb.SheetNames.find((n) => /c[eé]lula/i.test(n)) ??
+            wb.SheetNames[0];
+          const sheet = wb.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
           imported = rows.map(parseRowToData);
         } else {
           const text = reader.result as string;
@@ -547,7 +557,7 @@ export default function Dashboard() {
 
           <StatCard
             title="Total de Células"
-            value={cellData.length}
+            value={totalCélulas}
             icon={<LayoutGrid className="w-6 h-6 text-[#7c2d12]" />}
             borderColor="border-l-[#7c2d12]"
             bgColor="bg-[#fff7ed]"
